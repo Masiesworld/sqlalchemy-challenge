@@ -62,8 +62,8 @@ def prcp():
     return jsonify(prcp_scores)
 
 @app.route("/api/v1.0/stations")
-"""Return a JSON list of stations from the dataset."""
 def station():
+    """ Return a JSON list of stations from the dataset."""
     session = Session(engine)
     results_station = session.query(Station.station, Station.name,Station.latitude,Station.longitude,Station.elevation).all()
     session.close()
@@ -86,8 +86,7 @@ def tobs():
     """
     Query the dates and temperature observations of the most active station 
     for the last year of data.
-    Return a JSON list of temperature observations (TOBS) for the previous year.
-    """
+    Return a JSON list of temperature observations (TOBS) for the previous year."""
     session = Session(engine)
     latest_day = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
     previous_year = (dt.datetime.strptime(lastest_day,'%Y-%m-%d') - dt.timedelta(days=365)).strftime('%Y-%m-%d')
@@ -108,55 +107,51 @@ def tobs():
 
 
 @app.route("/api/v1.0/<start>")
-"""
-Return a JSON list of the minimum temperature, the average temperature, 
-and the max temperature for a given start or start-end range.
+def start():
+# When given the start only, calculate TMIN, TAVG, and TMAX for all dates greater than and equal to the start date.
+    session = Session(engine)
+    start_date = dt.datetime.strptime(start, '%Y-%m-%d')
+    sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+    results_startdate = session.query(*sel).filter(Measurement.date >= start_date).group_by(Measurement.date).all()
+    session.close()
 
-When given the start only, calculate TMIN, TAVG, and TMAX for all dates 
-greater than and equal to the start date.
-"""
-session = Session(engine)
-start_date = dt.datetime.strptime(start, %Y-%m-%d)
-sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
-results_startdate = session.query(*sel).filter(Measurement.date >= start_date).group_by(Measurement.date).all()
-session.close()
+    date_info = []
+    for date,min,avg,max in results_startdate:
+        start_dict = {}
+        start_dict['Date'] = date
+        start_dict['TMIN'] = min
+        start_dict['TAVG'] = avg
+        start_dict['TMAX'] = max
+        date_info.append(start_dict)
 
-date_info = []
-for date,min,avg,max in results_startdate:
-    start_dict = {}
-    start_dict['Date'] = date
-    start_dict['TMIN'] = min
-    start_dict['TAVG'] = avg
-    start_dict['TMAX'] = max
-    date_info.append(start_dict)
-
-return jsonify(date_info)
+    return jsonify(date_info)
 
 
 
 @app.route("/api/v1.0/<start>/<end>")
-"""When given the start and the end date, calculate the TMIN, TAVG, 
-and TMAX for dates between the start and end date inclusive."""
-session = Session(engine)
-start_date = dt.datetime.strptime(start, %Y-%m-%d)
-end_date = dt.datetime.strptime(end, %Y-%m-%d)
+def startend():
+#"""When given the start and the end date, calculate the TMIN, TAVG, 
+#and TMAX for dates between the start and end date inclusive."""
+    session = Session(engine)
+    start_date = dt.datetime.strptime(start, '%Y-%m-%d')
+    end_date = dt.datetime.strptime(end, '%Y-%m-%d')
 
-sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
-results_startdate = session.query(*sel).filter(Measurement.date >= start_date).\
-                    filter(Measurement.date <= end_date).\
-                    group_by(Measurement.date).all()
-session.close()
+    sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+    results_startdate = session.query(*sel).filter(Measurement.date >= start_date).\
+                        filter(Measurement.date <= end_date).\
+                        group_by(Measurement.date).all()
+    session.close()
 
-date_info = []
-for date,min,avg,max in results_startdate:
-    startend_dict = {}
-    startend_dict['Date'] = date
-    startend_dict['TMIN'] = min
-    startend_dict['TAVG'] = avg
-    startend_dict['TMAX'] = max
-    date_info.append(startend_dict)
+    date_info = []
+    for date,min,avg,max in results_startdate:
+        startend_dict = {}
+        startend_dict['Date'] = date
+        startend_dict['TMIN'] = min
+        startend_dict['TAVG'] = avg
+        startend_dict['TMAX'] = max
+        date_info.append(startend_dict)
 
-return jsonify(date_info)
+    return jsonify(date_info)
 
 
 if __name__ == "__main__":
